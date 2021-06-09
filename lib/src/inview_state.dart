@@ -13,7 +13,7 @@ class InViewState extends ChangeNotifier {
 
   ///The String id's of the widgets in the listview that the user expects a
   ///notification whether it is in-view or not. This helps to make recognition easy.
-  List<String> _currentInViewIds = [];
+  List<String> currentInViewIds = [];
   final IsInViewPortCondition? _isInViewCondition;
 
   final Axis _scrollDirection;
@@ -25,11 +25,11 @@ class InViewState extends ChangeNotifier {
       : _scrollDirection = scrollDirection,
         _isInViewCondition = isInViewCondition {
     _contexts = Set<WidgetData>();
-    _currentInViewIds.addAll(intialIds);
+    currentInViewIds.addAll(intialIds);
   }
 
   ///Number of widgets that are currently in-view.
-  int get inViewWidgetIdsLength => _currentInViewIds.length;
+  int get inViewWidgetIdsLength => currentInViewIds.length;
 
   int get numberOfContextStored => _contexts.length;
 
@@ -39,30 +39,29 @@ class InViewState extends ChangeNotifier {
     _contexts.add(WidgetData(context: context, id: id));
   }
 
-  ///Keeps the number of widget's contexts the InViewNotifier should stored/cached for
-  ///the calculations thats needed to be done to check if the widgets are inView or not.
-  ///Defaults to 10 and should be greater than 1. This is done to reduce the number of calculations being performed.
-  void removeContexts(int letRemain) {
-    if (_contexts.length > letRemain) {
-      _contexts = _contexts.skip(_contexts.length - letRemain).toSet();
-    }
-  }
-
   ///Checks if the widget with the `id` is currently in-view or not.
   bool inView(String id) {
-    return _currentInViewIds.contains(id);
+    return currentInViewIds.contains(id);
   }
 
   ///The listener that is called when the list view is scrolled.
   void onScroll(ScrollNotification notification) {
     // Iterate through each item to check
     // whether it is in the viewport
+    print('${_contexts.length}: ' +
+        _contexts.map((e) {
+          final date = DateTime.parse(e.id);
+          return '${date.day}.${date.month}';
+        }).toString());
+    final markedToRemove = [];
     _contexts.forEach((WidgetData item) {
       // Retrieve the RenderObject, linked to a specific item
       final RenderObject? renderObject = item.context!.findRenderObject();
 
       // If none was to be found, or if not attached, leave by now
       if (renderObject == null || !renderObject.attached) {
+        currentInViewIds.remove(item.id);
+        markedToRemove.add(item.id);
         return;
       }
 
@@ -87,16 +86,17 @@ class InViewState extends ChangeNotifier {
 
       if (isInViewport) {
         //prevent changing the value on every scroll if its already the same
-        if (!_currentInViewIds.contains(item.id)) {
-          _currentInViewIds.add(item.id);
+        if (!currentInViewIds.contains(item.id)) {
+          currentInViewIds.add(item.id);
           notifyListeners();
         }
       } else {
-        if (_currentInViewIds.contains(item.id)) {
-          _currentInViewIds.remove(item.id);
+        if (currentInViewIds.contains(item.id)) {
+          currentInViewIds.remove(item.id);
           notifyListeners();
         }
       }
     });
+    _contexts.removeWhere((item) => markedToRemove.contains(item.id));
   }
 }

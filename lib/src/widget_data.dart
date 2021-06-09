@@ -11,4 +11,12 @@ class WidgetData {
   String toString() {
     return describeIdentity(this) + " id=$id";
   }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  bool operator ==(Object? other) {
+    if (other is! WidgetData) return false;
+    return other.id == id;
+  }
 }
