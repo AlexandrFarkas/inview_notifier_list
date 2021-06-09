@@ -48,11 +48,6 @@ class InViewState extends ChangeNotifier {
   void onScroll(ScrollNotification notification) {
     // Iterate through each item to check
     // whether it is in the viewport
-    print('${_contexts.length}: ' +
-        _contexts.map((e) {
-          final date = DateTime.parse(e.id);
-          return '${date.day}.${date.month}';
-        }).toString());
     final markedToRemove = [];
     _contexts.forEach((WidgetData item) {
       // Retrieve the RenderObject, linked to a specific item
