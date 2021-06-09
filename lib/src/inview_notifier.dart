@@ -14,7 +14,7 @@ class InViewNotifier extends StatefulWidget {
   final List<String> initialInViewIds;
 
   ///The widget that should be displayed in the [InViewNotifier].
-  final ScrollView child;
+  final Widget child;
 
   ///The number of widget's contexts the InViewNotifier should stored/cached for
   ///the calculations thats needed to be done to check if the widgets are inView or not.
@@ -42,6 +42,7 @@ class InViewNotifier extends StatefulWidget {
   InViewNotifier({
     Key? key,
     required this.child,
+    Axis? scrollDirection,
     this.initialInViewIds = const [],
     this.contextCacheCount = 10,
     this.endNotificationOffset = 0.0,
@@ -50,7 +51,7 @@ class InViewNotifier extends StatefulWidget {
     required this.isInViewPortCondition,
   })  : assert(contextCacheCount >= 1),
         assert(endNotificationOffset >= 0.0),
-        scrollDirection = child.scrollDirection,
+        scrollDirection = child is ScrollView ? child.scrollDirection : scrollDirection!,
         super(key: key);
 
   @override
@@ -91,15 +92,14 @@ class _InViewNotifierState extends State<InViewNotifier> {
   void _startListening() {
     _streamController = StreamController<ScrollNotification>();
 
-    _streamController!.stream
-        .audit(widget.throttleDuration)
-        .listen(_inViewState!.onScroll);
+    _streamController!.stream.audit(widget.throttleDuration).listen(_inViewState!.onScroll);
   }
 
   void _initializeInViewState() {
     _inViewState = InViewState(
       intialIds: widget.initialInViewIds,
       isInViewCondition: widget.isInViewPortCondition,
+      scrollDirection: widget.scrollDirection,
     );
   }
 
@@ -112,25 +112,23 @@ class _InViewNotifierState extends State<InViewNotifier> {
         onNotification: (ScrollNotification notification) {
           late bool isScrollDirection;
           //the direction of user scroll up, down, left, right.
-          final AxisDirection scrollDirection =
-              notification.metrics.axisDirection;
+          final AxisDirection scrollDirection = notification.metrics.axisDirection;
 
           switch (widget.scrollDirection) {
             case Axis.vertical:
-              isScrollDirection = scrollDirection == AxisDirection.down ||
-                  scrollDirection == AxisDirection.up;
+              isScrollDirection =
+                  scrollDirection == AxisDirection.down || scrollDirection == AxisDirection.up;
               break;
             case Axis.horizontal:
-              isScrollDirection = scrollDirection == AxisDirection.left ||
-                  scrollDirection == AxisDirection.right;
+              isScrollDirection =
+                  scrollDirection == AxisDirection.left || scrollDirection == AxisDirection.right;
               break;
           }
           final double maxScroll = notification.metrics.maxScrollExtent;
 
           //end of the listview reached
           if (isScrollDirection &&
-              maxScroll - notification.metrics.pixels <=
-                  widget.endNotificationOffset) {
+              maxScroll - notification.metrics.pixels <= widget.endNotificationOffset) {
             if (widget.onListEndReached != null) {
               widget.onListEndReached!();
             }
@@ -139,9 +137,6 @@ class _InViewNotifierState extends State<InViewNotifier> {
           //when user is not scrolling
           if (notification is UserScrollNotification &&
               notification.direction == ScrollDirection.idle) {
-            //Keeps only the last number contexts provided by user. This prevents overcalculation
-            //by iterating over non visible widget contexts in scroll listener
-            _inViewState!.removeContexts(widget.contextCacheCount);
 
             if (!_streamController!.isClosed && isScrollDirection) {
               _streamController!.add(notification);
